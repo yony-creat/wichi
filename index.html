@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>일본어로 위치 설명하기</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: 'Noto Sans KR', sans-serif;
+      background-color: #f0f4f8;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      margin: 0;
+      padding: 15px;
+    }
+    .game-card {
+      background: white;
+      width: 100%;
+      max-width: 500px;
+      border-radius: 16px;
+      padding: 24px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+      text-align: center;
+    }
+    
+    /* 시작 화면 설정 스타일 */
+    .start-box {
+      padding: 10px 0;
+    }
+    .start-title {
+      font-size: 1.5rem;
+      font-weight: bold;
+      color: #2D3748;
+      margin-bottom: 20px;
+    }
+    .section-label {
+      font-weight: 600;
+      color: #4A5568;
+      margin-bottom: 8px;
+      text-align: left;
+      font-size: 0.95rem;
+    }
+    
+    /* 모드 선택 버튼 그룹 */
+    .mode-select-group {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    .mode-btn {
+      padding: 14px 10px;
+      font-size: 0.95rem;
+      border: 2px solid #CBD5E0;
+      background-color: white;
+      color: #4A5568;
+      border-radius: 10px;
+      cursor: pointer;
+      font-weight: bold;
+      transition: all 0.2s;
+    }
+    .mode-btn.active {
+      border-color: #3182CE;
+      background-color: #EBF8FF;
+      color: #2B6CB0;
+    }
+
+    /* 시간 선택 버튼 그룹 */
+    .time-select-group {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-bottom: 25px;
+    }
+    .time-btn {
+      padding: 10px;
+      font-size: 0.9rem;
+      border: 2px solid #CBD5E0;
+      background-color: white;
+      color: #4A5568;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: bold;
+      transition: all 0.2s;
+    }
+    .time-btn.active {
+      border-color: #3182CE;
+      background-color: #EBF8FF;
+      color: #2B6CB0;
+    }
+
+    .start-game-btn {
+      width: 100%;
+      padding: 14px;
+      font-size: 1.1rem;
+      background-color: #38A169;
+      color: white;
+      border: none;
+      border-radius: 10px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    /* 게임 상단 정보바 */
+    .status-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-weight: bold;
+      color: #4A5568;
+      margin-bottom: 12px;
+      background: #EDF2F7;
+      padding: 8px 12px;
+      border-radius: 10px;
+    }
+    .status-item {
+      font-size: 0.9rem;
+    }
+    .highlight {
+      color: #3182CE;
+      font-size: 1rem;
+    }
+
+    /* 처음으로 돌아가기 버튼 */
+    .btn-home {
+      padding: 5px 10px;
+      font-size: 0.85rem;
+      background-color: #718096;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    .btn-home:active {
+      background-color: #4A5568;
+    }
+
+    /* 그림 표현 영역 */
+    .scene-box {
+      width: 100%;
+      height: 180px;
+      background-color: #e2e8f0;
+      border-radius: 12px;
+      position: relative;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      margin-bottom: 15px;
+      overflow: hidden;
+    }
+    .item {
+      position: absolute;
+      font-size: 3.5rem;
+      transition: all 0.3s ease;
+    }
+    
+    /* 6가지 위치 관계 스타일 (위, 아래, 앞, 뒤, 옆, 안) */
+    .pos-above { transform: translateY(-38px); z-index: 2; }
+    .pos-below { transform: translateY(38px); z-index: 2; }
+    .pos-front { transform: scale(1.15) translateY(12px); z-index: 2; }
+    .pos-back  { transform: scale(0.8) translateY(-15px); opacity: 0.7; z-index: 1; }
+    .pos-next  { transform: translateX(50px); z-index: 2; }
+    .pos-inside { transform: scale(0.65) translateY(-5px); z-index: 2; opacity: 0.9; }
+    .pos-base   { transform: translateY(0px); z-index: 1; }
+
+    .question-text {
+      font-size: 1.1rem;
+      color: #2D3748;
+      margin-bottom: 12px;
+      font-weight: 600;
+    }
+    
+    /* 입력창 및 컨트롤 버튼 그룹 */
+    .input-group {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 12px;
+    }
+    input[type="text"] {
+      flex: 1;
+      padding: 10px 14px;
+      font-size: 1rem;
+      border: 2px solid #CBD5E0;
+      border-radius: 8px;
+      outline: none;
+    }
+    input[type="text"]:focus {
+      border-color: #3182CE;
+    }
+
+    /* 터치 단어 패널 */
+    .word-palette {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: center;
+      margin-bottom: 15px;
+      background-color: #F7FAFC;
+      padding: 12px;
+      border-radius: 10px;
+      border: 1px solid #E2E8F0;
+    }
+    .chip-btn {
+      padding: 8px 12px;
+      font-size: 0.95rem;
+      background-color: #EDF2F7;
+      color: #2D3748;
+      border: 1px solid #CBD5E0;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: bold;
+      transition: background 0.2s;
+    }
+    .chip-btn:active {
+      background-color: #CBD5E0;
+    }
+
+    .btn-submit { background-color: #3182CE; color: white; border: none; border-radius: 8px; font-weight: bold; }
+    .btn-clear  { background-color: #E53E3E; color: white; border: none; border-radius: 8px; font-weight: bold; }
+
+    button:disabled { background-color: #A0AEC0 !important; cursor: not-allowed; }
+    
+    /* 피드백 및 정답안내 상자 */
+    .feedback-box {
+      min-height: 40px;
+      margin-bottom: 10px;
+    }
+    .correct { color: #38A169; font-weight: bold; font-size: 1.1rem; }
+    .wrong-title { color: #E53E3E; font-weight: bold; font-size: 1rem; margin-bottom: 4px; }
+    .answer-display {
+      background-color: #FFF5F5;
+      border: 1px solid #FEB2B2;
+      border-radius: 8px;
+      padding: 8px;
+      color: #C53030;
+      font-size: 0.95rem;
+      margin-top: 5px;
+    }
+
+    /* 오답 시 선택 가능한 이동 버튼 그룹 */
+    .action-group {
+      display: none;
+      gap: 10px;
+      justify-content: center;
+      margin-top: 10px;
+    }
+    .btn-retry {
+      background-color: #DD6B20;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      padding: 10px 16px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    .btn-next {
+      background-color: #3182CE;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      padding: 10px 16px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    #gamePlayArea, #gameOverArea {
+      display: none;
+    }
+    .game-over-box {
+      padding: 20px 0;
+    }
+    .restart-btn {
+      margin-top: 15px;
+      background-color: #38A169;
+      width: 100%;
+    }
+  </style>
+</head>
+<body>
+
+<div class="game-card">
+  <!-- 0. 게임 설정/시작 화면 -->
+  <div class="start-box" id="startArea">
+    <div class="start-title">🎮 일본어로 위치 설명하기</div>
+    
+    <div class="section-label">1. 게임 모드 선택</div>
+    <div class="mode-select-group">
+      <button class="mode-btn active" onclick="selectMode('type')">✍️ 직접 입력하기</button>
+      <button class="mode-btn" onclick="selectMode('touch')">🧩 단어 순서 맞추기</button>
+    </div>
+
+    <div class="section-label">2. 제한 시간 선택</div>
+    <div class="time-select-group">
+      <button class="time-btn" onclick="selectTime(60)">1분</button>
+      <button class="time-btn active" onclick="selectTime(120)">2분</button>
+      <button class="time-btn" onclick="selectTime(180)">3분</button>
+      <button class="time-btn" onclick="selectTime(300)">5분</button>
+      <button class="time-btn" onclick="selectTime(600)">10분</button>
+      <button class="time-btn" onclick="selectTime(0)">제한없음</button>
+    </div>
+
+    <button class="start-game-btn" onclick="startGame()">게임 시작하기</button>
+  </div>
+
+  <!-- 1. 게임 플레이 영역 -->
+  <div id="gamePlayArea">
+    <div class="status-bar" id="statusBar">
+      <button class="btn-home" onclick="showStartScreen()">🏠 처음으로</button>
+      <div class="status-item">문제 <span id="stageInfo" class="highlight">1/10</span></div>
+      <div class="status-item">⏱️ <span id="timerInfo" class="highlight">120</span></div>
+      <div class="status-item">점수 <span id="scoreInfo" class="highlight">0</span>점</div>
+    </div>
+
+    <div class="scene-box" id="scene">
+      <div id="targetItem" class="item"></div>
+      <div id="baseItem" class="item"></div>
+    </div>
+
+    <div class="question-text" id="questionHint"></div>
+
+    <!-- 입력창 그룹 -->
+    <div class="input-group">
+      <input type="text" id="userInput" placeholder="" autocomplete="off">
+      <button class="btn-clear" id="clearBtn" onclick="clearInput()">지우기</button>
+      <button id="submitBtn" class="btn-submit" onclick="checkAnswer()">확인</button>
+    </div>
+
+    <!-- 터치 단어 패널 -->
+    <div class="word-palette" id="wordPalette" style="display: none;"></div>
+
+    <!-- 피드백 영역 -->
+    <div class="feedback-box" id="feedbackBox"></div>
+
+    <!-- 오답 시 진행 버튼 그룹 -->
+    <div class="action-group" id="actionGroup">
+      <button class="btn-retry" onclick="retryQuiz()">🔄 다시 풀기</button>
+      <button class="btn-next" onclick="nextQuiz()">➡️ 다음 문제</button>
+    </div>
+  </div>
+
+  <!-- 2. 게임 종료 영역 -->
+  <div class="game-over-box" id="gameOverArea">
+    <h2 id="gameOverTitle">🎮 게임 종료!</h2>
+    <p id="finalScoreText" style="font-size: 1.2rem; font-weight: bold;"></p>
+    <button class="restart-btn" onclick="showStartScreen()">다시 설정하기</button>
+  </div>
+</div>
+
+<script>
+  const dictionary = {
+    "소":     { jp: "うし",     roma: "ushi",     emoji: "🐄", isLiving: true },
+    "수박":   { jp: "すいか",   roma: "suika",    emoji: "🍉", isLiving: false },
+    "로켓":   { jp: "ロケット", roma: "roketto", emoji: "🚀", isLiving: false },
+    "몬스터": { jp: "モンスター", roma: "monsuta-", emoji: "👾", isLiving: true },
+    "토끼":   { jp: "うさぎ",   roma: "usagi",    emoji: "🐰", isLiving: true },
+    "당근":   { jp: "にんじん", roma: "ninzin",   emoji: "🥕", isLiving: false },
+    "상자":   { jp: "はこ",     roma: "hako",     emoji: "📦", isLiving: false },
+    "늑대":   { jp: "おおかみ", roma: "ookami",   emoji: "🐺", isLiving: true },
+    "호박":   { jp: "かぼちゃ", roma: "kabocha",  emoji: "🎃", isLiving: false },
+    "돼지":   { jp: "ぶた",     roma: "buta",     emoji: "🐷", isLiving: true },
+    "나무":   { jp: "き",       roma: "ki",       emoji: "🌳", isLiving: false },
+    "벌":     { jp: "はち",     roma: "hachi",    emoji: "🐝", isLiving: true },
+    "빵":     { jp: "パン",     roma: "pan",      emoji: "🍞", isLiving: false },
+    "사람":   { jp: "ひと",     roma: "hito",     emoji: "🧑", isLiving: true }
+  };
+
+  const positions = {
+    "위":   { jp: "うえ",   roma: "ue",     targetClass: "pos-above", baseClass: "pos-base" },
+    "아래": { jp: "した",   roma: "shita",  targetClass: "pos-below", baseClass: "pos-base" },
+    "앞":   { jp: "まえ",   roma: "mae",    targetClass: "pos-front", baseClass: "pos-base" },
+    "뒤":   { jp: "うしろ", roma: "ushiro", targetClass: "pos-back",  baseClass: "pos-base" },
+    "옆":   { jp: "よこ",   roma: "yoko",   targetClass: "pos-next",  baseClass: "pos-base" },
+    "안":   { jp: "なか",   roma: "naka",   targetClass: "pos-inside",baseClass: "pos-base" }
+  };
+
+  const dummyWordsPool = ["は", "を", "で", "と", "へ", "うえ", "した", "まえ", "うしろ", "よこ", "なか"];
+
+  const rawQuizList = [
+    { target: "소",     pos: "위",   base: "로켓" },
+    { target: "수박",   pos: "아래", base: "나무" },
+    { target: "당근",   pos: "안",   base: "상자" },
+    { target: "토끼",   pos: "옆",   base: "상자" },
+    { target: "호박",   pos: "뒤",   base: "돼지" },
+    { target: "늑대",   pos: "앞",   base: "나무" },
+    { target: "벌",     pos: "위",   base: "나무" },
+    { target: "빵",     pos: "아래", base: "상자" },
+    { target: "사람",   pos: "뒤",   base: "로켓" },
+    { target: "돼지",   pos: "옆",   base: "나무" },
+    { target: "수박",   pos: "안",   base: "상자" },
+    { target: "토끼",   pos: "앞",   base: "사람" },
+    { target: "몬스터", pos: "뒤",   base: "상자" },
+    { target: "벌",     pos: "아래", base: "로켓" },
+    { target: "당근",   pos: "옆",   base: "돼지" },
+    { target: "사람",   pos: "안",   base: "상자" }
+  ];
+
+  let quizList = [];
+  let currentIdx = 0;
+  let score = 0;
+  let selectedMode = 'type';
+  let selectedTimeLimit = 120;
+  let timeLeft = 120;
+  let timerInterval = null;
+  let isChecking = false;
+
+  function selectMode(mode) {
+    selectedMode = mode;
+    const btns = document.querySelectorAll('.mode-btn');
+    btns[0].classList.toggle('active', mode === 'type');
+    btns[1].classList.toggle('active', mode === 'touch');
+  }
+
+  function selectTime(seconds) {
+    selectedTimeLimit = seconds;
+    const btns = document.querySelectorAll('.time-btn');
+    btns.forEach(btn => btn.classList.remove('active'));
+    event.target.classList.add('active');
+  }
+
+  function shuffleArray(array) {
+    const arr = [...array];
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+  }
+
+  function getJosaGa(word) {
+    const lastChar = word.charCodeAt(word.length - 1);
+    const hasBatchim = (lastChar - 0xAC00) % 28 !== 0;
+    return hasBatchim ? '이' : '가';
+  }
+
+  function normalizeText(text) {
+    return text
+      .replace(/[\s\u3000\u180E\u2000-\u200B\u202F\u205F]/g, '')
+      .replace(/[\.\｡\。]/g, '')
+      .toLowerCase();
+  }
+
+  function showStartScreen() {
+    if (timerInterval) clearInterval(timerInterval);
+    document.getElementById("startArea").style.display = "block";
+    document.getElementById("gamePlayArea").style.display = "none";
+    document.getElementById("gameOverArea").style.display = "none";
+  }
+
+  function startGame() {
+    quizList = shuffleArray(rawQuizList);
+    currentIdx = 0;
+    score = 0;
+    timeLeft = selectedTimeLimit;
+    isChecking = false;
+
+    document.getElementById("startArea").style.display = "none";
+    document.getElementById("gamePlayArea").style.display = "block";
+    document.getElementById("gameOverArea").style.display = "none";
+
+    const inputEl = document.getElementById("userInput");
+    const paletteEl = document.getElementById("wordPalette");
+
+    if (selectedMode === 'type') {
+      inputEl.placeholder = "일본어 문장을 입력하세요";
+      inputEl.readOnly = false;
+      paletteEl.style.display = "none";
+    } else {
+      inputEl.placeholder = "아래 단어 버튼을 순서대로 누르세요";
+      inputEl.readOnly = true;
+      paletteEl.style.display = "flex";
+    }
+
+    document.getElementById("scoreInfo").innerText = score;
+    updateTimerDisplay();
+
+    loadQuiz();
+    
+    if (timerInterval) clearInterval(timerInterval);
+    if (selectedTimeLimit > 0) {
+      timerInterval = setInterval(() => {
+        timeLeft--;
+        updateTimerDisplay();
+        if (timeLeft <= 0) endGame(false);
+      }, 1000);
+    }
+  }
+
+  function updateTimerDisplay() {
+    const timerEl = document.getElementById("timerInfo");
+    if (selectedTimeLimit === 0) {
+      timerEl.innerText = "무제한";
+    } else {
+      const mins = Math.floor(timeLeft / 60);
+      const secs = timeLeft % 60;
+      timerEl.innerText = mins > 0 ? `${mins}분 ${secs}초` : `${secs}초`;
+    }
+  }
+
+  function loadQuiz() {
+    isChecking = false;
+    const quiz = quizList[currentIdx];
+    const targetObj = dictionary[quiz.target];
+    const baseObj = dictionary[quiz.base];
+    const posObj = positions[quiz.pos];
+
+    const josa = getJosaGa(quiz.target);
+    const hintText = `"${quiz.base} ${quiz.pos}에 ${quiz.target}${josa} 있습니다."`;
+
+    document.getElementById("stageInfo").innerText = `${currentIdx + 1} / ${quizList.length}`;
+    document.getElementById("questionHint").innerText = hintText;
+    document.getElementById("feedbackBox").innerHTML = "";
+    document.getElementById("actionGroup").style.display = "none";
+
+    const inputEl = document.getElementById("userInput");
+    inputEl.value = "";
+    inputEl.disabled = false;
+    document.getElementById("submitBtn").disabled = false;
+    document.getElementById("clearBtn").disabled = false;
+    
+    if (selectedMode === 'type') {
+      inputEl.focus();
+    }
+
+    const targetEl = document.getElementById("targetItem");
+    const baseEl = document.getElementById("baseItem");
+
+    targetEl.innerText = targetObj.emoji;
+    baseEl.innerText = baseObj.emoji;
+
+    targetEl.className = `item ${posObj.targetClass}`;
+    baseEl.className = `item ${posObj.baseClass}`;
+
+    if (selectedMode === 'touch') {
+      buildWordPalette(baseObj, posObj, targetObj);
+    }
+  }
+
+  function buildWordPalette(baseObj, posObj, targetObj) {
+    const paletteEl = document.getElementById("wordPalette");
+    paletteEl.innerHTML = "";
+
+    let wordPool = [
+      baseObj.jp,
+      "の",
+      posObj.jp,
+      "に",
+      targetObj.jp,
+      "が",
+      "います",
+      "あります"
+    ];
+
+    const activeDummies = dummyWordsPool.filter(w => w !== posObj.jp);
+    const randomDummies = shuffleArray(activeDummies).slice(0, 2);
+    wordPool = wordPool.concat(randomDummies);
+
+    const shuffledPool = shuffleArray(wordPool);
+
+    shuffledPool.forEach(word => {
+      const btn = document.createElement("button");
+      btn.className = "chip-btn";
+      btn.innerText = word;
+      btn.onclick = () => appendWord(word);
+      paletteEl.appendChild(btn);
+    });
+  }
+
+  function appendWord(word) {
+    const inputEl = document.getElementById("userInput");
+    if (!inputEl.disabled) {
+      inputEl.value += word;
+    }
+  }
+
+  function clearInput() {
+    const inputEl = document.getElementById("userInput");
+    if (!inputEl.disabled) {
+      inputEl.value = "";
+    }
+  }
+
+  function checkAnswer() {
+    if (isChecking) return;
+
+    const rawInput = document.getElementById("userInput").value;
+    const cleanInput = normalizeText(rawInput);
+    
+    if (!cleanInput) return;
+
+    isChecking = true;
+    const quiz = quizList[currentIdx];
+    const targetObj = dictionary[quiz.target];
+    const baseObj = dictionary[quiz.base];
+    const posObj = positions[quiz.pos];
+
+    const verbJp = targetObj.isLiving ? "います" : "あります";
+    const verbRoma = targetObj.isLiving ? "imasu" : "arimasu";
+
+    const displayAnswerJp = `${baseObj.jp} の ${posObj.jp} に ${targetObj.jp} が ${verbJp}`;
+    const displayAnswerRoma = `${baseObj.roma} no ${posObj.roma} ni ${targetObj.roma} ga ${verbRoma}`;
+
+    const correctJp = normalizeText(`${baseObj.jp}の${posObj.jp}に${targetObj.jp}が${verbJp}`);
+    const correctRoma = normalizeText(`${baseObj.roma}no${posObj.roma}ni${targetObj.roma}ga${verbRoma}`);
+
+    const feedbackBox = document.getElementById("feedbackBox");
+
+    if (cleanInput === correctJp || cleanInput === correctRoma) {
+      score += 10;
+      document.getElementById("scoreInfo").innerText = score;
+      feedbackBox.innerHTML = `<div class="correct">⭕ 정답입니다! (正解です)</div>`;
+      
+      document.getElementById("userInput").disabled = true;
+      document.getElementById("submitBtn").disabled = true;
+      document.getElementById("clearBtn").disabled = true;
+
+      setTimeout(() => {
+        currentIdx++;
+        if (currentIdx < quizList.length) {
+          loadQuiz();
+        } else {
+          endGame(true);
+        }
+      }, 1200);
+    } else {
+      // 오답 시 정답 보여주기 & 다시 풀기/다음 문제 선택 유도
+      document.getElementById("userInput").disabled = true;
+      document.getElementById("submitBtn").disabled = true;
+      document.getElementById("clearBtn").disabled = true;
+
+      feedbackBox.innerHTML = `
+        <div class="wrong-title">❌ 아쉽네요! 정답을 확인해 보세요.</div>
+        <div class="answer-display">
+          <strong>💡 정답:</strong> ${displayAnswerJp}<br>
+          <small>(${displayAnswerRoma})</small>
+        </div>
+      `;
+
+      document.getElementById("actionGroup").style.display = "flex";
+    }
+  }
+
+  // 오답 시 [다시 풀기] 선택
+  function retryQuiz() {
+    loadQuiz();
+  }
+
+  // 오답 시 [다음 문제] 선택
+  function nextQuiz() {
+    currentIdx++;
+    if (currentIdx < quizList.length) {
+      loadQuiz();
+    } else {
+      endGame(true);
+    }
+  }
+
+  function endGame(isCompleted) {
+    if (timerInterval) clearInterval(timerInterval);
+    document.getElementById("gamePlayArea").style.display = "none";
+    document.getElementById("gameOverArea").style.display = "block";
+
+    const titleEl = document.getElementById("gameOverTitle");
+    const scoreTextEl = document.getElementById("finalScoreText");
+
+    if (isCompleted) {
+      titleEl.innerText = "🎉 축하합니다! 모든 문제 완주!";
+      scoreTextEl.innerText = selectedTimeLimit > 0 
+        ? `최종 점수: ${score}점 (남은 시간: ${Math.floor(timeLeft/60)}분 ${timeLeft%60}초)`
+        : `최종 점수: ${score}점`;
+    } else {
+      titleEl.innerText = "⏰ 시간 초과!";
+      scoreTextEl.innerText = `최종 점수: ${score}점 (${currentIdx}문제 해결)`;
+    }
+  }
+
+  document.getElementById("userInput").addEventListener("keypress", function(e) {
+    if (e.key === "Enter") checkAnswer();
+  });
+
+  showStartScreen();
+</script>
+
+</body>
+</html>
